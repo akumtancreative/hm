@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Data Karyawan</title>
+    <!-- Tailwind CSS (Untuk Tampilan Bagus) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Ikon Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        /* CSS Tambahan Kecil */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .select-custom { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+        ::-webkit-scrollbar { height: 8px; width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-gray-100 flex h-screen overflow-hidden text-slate-800">
+
+    <!-- SIDEBAR -->
+    <div class="w-64 bg-[#0a4f5f] text-white flex flex-col shadow-xl z-20 hidden md:flex" id="sidebar">
+        <div class="p-6 border-b border-[#126a75] flex items-center gap-3">
+            <i data-lucide="building-2" class="text-[#4fd1c5]"></i>
+            <h2 class="font-bold text-lg tracking-wide">DATA PUSAT</h2>
+        </div>
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto" id="sectorList">
+            <!-- List Sektor akan muncul di sini via JS -->
+        </nav>
+        <div class="p-4 border-t border-[#126a75] text-xs text-center text-gray-400">
+            Versi HTML Standalone v1.0
+        </div>
+    </div>
+
+    <!-- KONTEN UTAMA -->
+    <div class="flex-1 flex flex-col h-full overflow-hidden relative">
+        
+        <!-- HEADER -->
+        <header class="bg-white shadow-sm border-b border-gray-200 p-4 flex justify-between items-center z-10">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="p-2 hover:bg-gray-100 rounded text-slate-600 md:hidden">
+                    <i data-lucide="menu"></i>
+                </button>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        Sektor <span id="activeSectorTitle">Katapang</span>
+                        <span id="countBadge" class="bg-orange-100 text-orange-700 text-xs px-2 py-0.5 rounded-full border border-orange-200">0</span>
+                    </h1>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="exportToExcel()" class="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm font-medium shadow-sm transition-all active:scale-95">
+                    <i data-lucide="download" width="18"></i> <span class="hidden sm:inline">Export Excel</span>
+                </button>
+                <button onclick="addNewRow()" class="flex items-center gap-2 px-4 py-2 bg-[#178593] hover:bg-[#126a75] text-white rounded text-sm font-medium shadow-sm transition-all active:scale-95">
+                    <i data-lucide="user-plus" width="18"></i> <span class="hidden sm:inline">Tambah Baris</span>
+                </button>
+                <button onclick="resetData()" class="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded text-sm font-medium shadow-sm transition-all active:scale-95" title="Reset ke Data Awal">
+                     <i data-lucide="refresh-cw" width="18"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- TABEL -->
+        <div class="flex-1 overflow-auto p-4 bg-gray-50">
+            <div class="bg-white rounded-lg shadow border border-gray-200 min-w-[1200px]">
+                <table class="w-full text-left border-collapse">
+                    <thead class="sticky top-0 z-10 shadow-sm">
+                        <tr class="bg-[#fff9ee] text-slate-700 text-xs uppercase font-bold tracking-wider border-b border-orange-200">
+                            <th class="p-3 w-10 text-center border-r border-orange-100">No</th>
+                            <th class="p-3 min-w-[200px] border-r border-orange-100">Nama</th>
+                            <th class="p-3 w-16 text-center border-r border-orange-100">K/P</th>
+                            <th class="p-3 w-16 text-center border-r border-orange-100">Kursus</th>
+                            <th class="p-3 w-20 text-center border-r border-orange-100">Kontrol</th>
+                            <th class="p-3 min-w-[120px] border-r border-orange-100">Kontak</th>
+                            <th class="p-3 w-24 text-center border-r border-orange-100">Lap. Guru</th>
+                            <th class="p-3 w-16 text-center border-r border-orange-100">HS</th>
+                            <th class="p-3 w-16 text-center border-r border-orange-100">JM</th>
+                            <th class="p-3 w-16 text-center border-r border-orange-100">SPP</th>
+                            <th class="p-3 min-w-[100px] border-r border-orange-100">Buletin Cetak</th>
+                            <th class="p-3 min-w-[100px] border-r border-orange-100">Buletin Digital</th>
+                            <th class="p-3 min-w-[100px] border-r border-orange-100">Kajian</th>
+                            <th class="p-3 w-12 text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-gray-100 text-sm text-slate-600">
+                        <!-- Data akan di-render di sini oleh JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- DATA AWAL (DEFAULT) ---
+        const initialData = [
+            // KATAPANG
+            { id: 1, sector: "Katapang", nama: "Rahmat Jafar K.", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 2, sector: "Katapang", nama: "Adika", kp: "K", kursus: "G", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 3, sector: "Katapang", nama: "Raka", kp: "K", kursus: "I", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 4, sector: "Katapang", nama: "Irwan", kp: "K", kursus: "✔", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 5, sector: "Katapang", nama: "Misnoto", kp: "K", kursus: "✔", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 6, sector: "Katapang", nama: "Suparman", kp: "K", kursus: "✔", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 7, sector: "Katapang", nama: "Suryono", kp: "K", kursus: "G", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 8, sector: "Katapang", nama: "Yudi", kp: "K", kursus: "G", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 9, sector: "Katapang", nama: "Zainuddin Manshur", kp: "K", kursus: "G", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 10, sector: "Katapang", nama: "Karim", kp: "K", kursus: "✔", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 11, sector: "Katapang", nama: "Asep Saepulloh", kp: "K", kursus: "✔", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 12, sector: "Katapang", nama: "Abay", kp: "K", kursus: "✔", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 13, sector: "Katapang", nama: "Farhan", kp: "P", kursus: "✔", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 14, sector: "Katapang", nama: "Fahri", kp: "P", kursus: "✔", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 15, sector: "Katapang", nama: "Sandy", kp: "P", kursus: "✔", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 16, sector: "Katapang", nama: "Handang", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 17, sector: "Katapang", nama: "Hendrik", kp: "P", kursus: "I", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 18, sector: "Katapang", nama: "Agus", kp: "P", kursus: "✔", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 19, sector: "Katapang", nama: "Theo", kp: "P", kursus: "I", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 20, sector: "Katapang", nama: "Sunny", kp: "P", kursus: "A", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 21, sector: "Katapang", nama: "Okta", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+
+            // SOREANG
+            { id: 22, sector: "Soreang", nama: "Anas", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 23, sector: "Soreang", nama: "Dede", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 24, sector: "Soreang", nama: "Iwan", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 25, sector: "Soreang", nama: "Maksum", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 26, sector: "Soreang", nama: "Rifky", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 27, sector: "Soreang", nama: "Wawan", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 28, sector: "Soreang", nama: "Risto", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 29, sector: "Soreang", nama: "Gunadi", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 30, sector: "Soreang", nama: "Deni", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 31, sector: "Soreang", nama: "Aris Suhendar", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 32, sector: "Soreang", nama: "Ade", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 33, sector: "Soreang", nama: "Ahmad Solihin", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 34, sector: "Soreang", nama: "Ahmad Syahrudin", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 35, sector: "Soreang", nama: "Deni Rofani", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 36, sector: "Soreang", nama: "Fikri", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 37, sector: "Soreang", nama: "Firman", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 38, sector: "Soreang", nama: "Ganjar", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 39, sector: "Soreang", nama: "Solihin", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 40, sector: "Soreang", nama: "Zaki", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 41, sector: "Soreang", nama: "Jupri", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 42, sector: "Soreang", nama: "Hari", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 43, sector: "Soreang", nama: "Ahmad Saehudin", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 44, sector: "Soreang", nama: "Kemal Mustafa", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 45, sector: "Soreang", nama: "Tedi", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 46, sector: "Soreang", nama: "Iko Uwais", kp: "K", kursus: "G", kontrol: "✔", kontak: "08177766655", lapGuru: "✕", hs: "✔", jm: "✔", spp: "✕", buletinCetak: "Ya", buletinDigital: "-", kajian: "Jarang" },
+
+            // MARGAHAYU
+            { id: 47, sector: "Margahayu", nama: "Iwan Zay", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 48, sector: "Margahayu", nama: "Iman Indrakusumah", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 49, sector: "Margahayu", nama: "Luthfi Affandi", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 50, sector: "Margahayu", nama: "Abdullah", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 51, sector: "Margahayu", nama: "Agus Prastowo", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 52, sector: "Margahayu", nama: "Bilal", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 53, sector: "Margahayu", nama: "Jajang", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 54, sector: "Margahayu", nama: "Doni", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 55, sector: "Margahayu", nama: "Abdul Aziz", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 56, sector: "Margahayu", nama: "Hendra", kp: "K", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 57, sector: "Margahayu", nama: "Ataya", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 58, sector: "Margahayu", nama: "Andri", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 59, sector: "Margahayu", nama: "Aban", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 60, sector: "Margahayu", nama: "Yofi", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 61, sector: "Margahayu", nama: "Sudrajat", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 62, sector: "Margahayu", nama: "Hudzwah", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" },
+            { id: 63, sector: "Margahayu", nama: "Ajat", kp: "P", kursus: "-", kontrol: "-", kontak: "-", lapGuru: "-", hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-" }
+        ];
+
+        // --- KONFIGURASI ---
+        const sectors = ["Katapang", "Margahayu", "Soreang"];
+        const optionsKP = ["K", "P"];
+        const optionsKursus = ["✔", "S", "I", "G", "T", "A", "-"];
+        const optionsCheck = ["✔", "✕", "-"];
+        
+        // --- STATE MANAJEMEN ---
+        let employees = [];
+        let activeSector = "Katapang";
+
+        // Load Data dari Local Storage (atau pakai initialData jika kosong)
+        function loadData() {
+            const stored = localStorage.getItem('karyawanData_v3');
+            if (stored) {
+                employees = JSON.parse(stored);
+            } else {
+                employees = [...initialData];
+                saveData();
+            }
+            renderSidebar();
+            renderTable();
+            lucide.createIcons();
+        }
+
+        function saveData() {
+            localStorage.setItem('karyawanData_v3', JSON.stringify(employees));
+            renderTable(); // Re-render untuk update tampilan jika perlu
+        }
+
+        function resetData() {
+            if(confirm("Apakah Anda yakin ingin mereset semua data kembali ke awal? Data yang sudah diubah akan hilang.")) {
+                localStorage.removeItem('karyawanData_v3');
+                location.reload();
+            }
+        }
+
+        // --- RENDER SIDEBAR ---
+        function renderSidebar() {
+            const list = document.getElementById('sectorList');
+            list.innerHTML = '';
+            sectors.forEach(sector => {
+                const btn = document.createElement('button');
+                const isActive = activeSector === sector;
+                btn.className = `w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${isActive ? 'bg-[#178593] text-white shadow-md translate-x-1' : 'text-gray-300 hover:bg-[#126a75] hover:text-white'}`;
+                btn.innerHTML = `<i data-lucide="map-pin" width="18"></i> ${sector}`;
+                btn.onclick = () => {
+                    activeSector = sector;
+                    renderSidebar();
+                    renderTable();
+                    lucide.createIcons();
+                    // Di mobile, tutup sidebar setelah klik
+                    if(window.innerWidth < 768) document.getElementById('sidebar').classList.add('hidden');
+                };
+                list.appendChild(btn);
+            });
+        }
+
+        // --- RENDER TABEL ---
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            // Filter Data
+            const filteredData = employees.filter(emp => emp.sector === activeSector);
+            
+            // Update Header Title & Badge
+            document.getElementById('activeSectorTitle').innerText = activeSector;
+            document.getElementById('countBadge').innerText = filteredData.length + " Personel";
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="14" class="p-8 text-center text-gray-400 italic">Belum ada data di sektor ini.</td></tr>`;
+                return;
+            }
+
+            filteredData.forEach((emp, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-blue-50/30 transition-colors group";
+                
+                // Helper untuk membuat select
+                const createSelect = (field, options, colorize = false) => {
+                    let colorClass = "text-slate-700";
+                    if(colorize) {
+                        if(emp[field] === "✔" || emp[field] === "K") colorClass = "text-green-600 font-bold";
+                        if(emp[field] === "✕" || emp[field] === "P") colorClass = "text-red-500 font-bold";
+                        if(field === "kp" && emp[field] === "K") colorClass = "bg-blue-100 text-blue-700 px-2 py-0.5 rounded";
+                        if(field === "kp" && emp[field] === "P") colorClass = "bg-pink-100 text-pink-700 px-2 py-0.5 rounded";
+                    }
+
+                    return `<select onchange="updateRow(${emp.id}, '${field}', this.value)" class="w-full bg-transparent border-none focus:ring-2 focus:ring-[#178593] rounded cursor-pointer text-center outline-none ${colorClass}">
+                        ${options.map(opt => `<option value="${opt}" ${emp[field] === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                    </select>`;
+                };
+
+                // Helper untuk input text
+                const createInput = (field, width = "w-full") => {
+                    return `<input type="text" value="${emp[field] || ''}" onchange="updateRow(${emp.id}, '${field}', this.value)" class="${width} px-2 py-1 bg-transparent border border-transparent hover:border-gray-300 focus:border-[#178593] rounded focus:bg-white transition-all outline-none">`;
+                };
+
+                tr.innerHTML = `
+                    <td class="p-2 text-center text-slate-400 font-medium border-r border-gray-100">${index + 1}</td>
+                    <td class="p-2 border-r border-gray-100">${createInput('nama')}</td>
+                    <td class="p-2 text-center border-r border-gray-100">${createSelect('kp', optionsKP, true)}</td>
+                    <td class="p-2 text-center border-r border-gray-100">${createSelect('kursus', optionsKursus, true)}</td>
+                    <td class="p-2 text-center border-r border-gray-100">${createSelect('kontrol', optionsCheck, true)}</td>
+                    <td class="p-2 border-r border-gray-100">${createInput('kontak')}</td>
+                    <td class="p-2 text-center border-r border-gray-100">${createSelect('lapGuru', optionsCheck, true)}</td>
+                    <td class="p-2 text-center border-r border-gray-100">${createSelect('hs', optionsCheck, true)}</td>
+                    <td class="p-2 text-center border-r border-gray-100">${createSelect('jm', optionsCheck, true)}</td>
+                    <td class="p-2 text-center border-r border-gray-100">${createSelect('spp', optionsCheck, true)}</td>
+                    <td class="p-2 border-r border-gray-100 text-center">${createInput('buletinCetak')}</td>
+                    <td class="p-2 border-r border-gray-100 text-center">${createInput('buletinDigital')}</td>
+                    <td class="p-2 border-r border-gray-100">${createInput('kajian')}</td>
+                    <td class="p-2 text-center">
+                        <button onclick="deleteRow(${emp.id})" class="text-gray-300 hover:text-red-500 transition-colors p-1 rounded hover:bg-red-50">
+                            <i data-lucide="trash-2" width="16"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        // --- FUNGSI INTERAKSI ---
+        function updateRow(id, field, value) {
+            const empIndex = employees.findIndex(e => e.id === id);
+            if (empIndex > -1) {
+                employees[empIndex][field] = value;
+                saveData();
+                // Opsional: Render ulang jika status K/P berubah agar warna berubah
+                if(field === 'kp' || field === 'kontrol') renderTable(); 
+            }
+        }
+
+        function addNewRow() {
+            const newId = Date.now();
+            employees.push({
+                id: newId,
+                sector: activeSector,
+                nama: "", kp: "K", kursus: "-", kontrol: "-", kontak: "", lapGuru: "-", 
+                hs: "-", jm: "-", spp: "-", buletinCetak: "-", buletinDigital: "-", kajian: "-"
+            });
+            saveData();
+            renderTable();
+        }
+
+        function deleteRow(id) {
+            if(confirm("Hapus baris ini?")) {
+                employees = employees.filter(e => e.id !== id);
+                saveData();
+                renderTable();
+            }
+        }
+
+        function exportToExcel() {
+            const filtered = employees.filter(emp => emp.sector === activeSector);
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "No,Sektor,Nama,K/P,Kursus,Kontrol,Kontak,Lap. Guru,HS,JM,SPP,Buletin Cetak,Buletin Digital,Kajian\n";
+            
+            filtered.forEach((row, index) => {
+                const rowString = [
+                    index + 1, row.sector, `"${row.nama}"`, row.kp, row.kursus, row.kontrol, `'${row.kontak}`,
+                    row.lapGuru, row.hs, row.jm, row.spp, `"${row.buletinCetak}"`, `"${row.buletinDigital}"`, `"${row.kajian}"`
+                ].join(",");
+                csvContent += rowString + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Data_${activeSector}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('hidden');
+        }
+
+        // --- INITIALIZE ---
+        window.onload = loadData;
+
+    </script>
+</body>
+</html>
